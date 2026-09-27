@@ -1,0 +1,33 @@
+# Netlify Configuration for NETHRA Repository
+
+[build]
+  base = "retinavision-ai-main/frontend"
+  publish = "dist"
+  command = "npm install && npm run build"
+
+# API Proxy: Forwards calls from Netlify to your deployed backend
+[[redirects]]
+  from = "/predict"
+  to = "https://retinavision-backend.onrender.com/predict"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/health"
+  to = "https://retinavision-backend.onrender.com/health"
+  status = 200
+  force = false
+
+# SPA Routing: Fallback to index.html for Single Page Application
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
