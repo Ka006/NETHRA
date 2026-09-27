@@ -1,0 +1,203 @@
+import axios from 'axios';
+import { Camera, Upload, AlertCircle, CheckCircle, Eye, Activity, RefreshCw } from 'lucide-react';
+
+export default function App() {
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setResult(null);
+      setError(null);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!selectedImage) return;
+
+    setLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', selectedImage);
+
+    try {
+      const response = await axios.post('https://poor-guests-reply.loca.lt/predict', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setResult(response.data.prediction);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to connect to screening server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRiskBadgeColor = (risk) => {
+    switch (risk?.toLowerCase()) {
+      case 'low': return { bg: '#e6f4ea', text: '#137333', border: '#ceead6' };
+      case 'mild': return { bg: '#fef7e0', text: '#b06000', border: '#feefc3' };
+      case 'moderate': return { bg: '#feefe3', text: '#c5221f', border: '#fed29f' };
+      case 'high':
+      case 'critical': return { bg: '#fce8e6', text: '#c5221f', border: '#fad2cf' };
+      default: return { bg: '#f1f3f4', text: '#3c4043', border: '#dadce0' };
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', padding: '32px 16px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+        
+        {/* Header */}
+        <header style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#eff6ff', color: '#2563eb', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
+            <Eye size={18} />
+            <span>AI Retinal Screening Engine</span>
+          </div>
+          <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
+            Diabetic Retinopathy Screener
+          </h1>
+          <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
+            Upload or capture a fundus photo for instantaneous deep-learning risk triage.
+          </p>
+        </header>
+
+        {/* Main Card */}
+        <div style={{ background: '#ffffff', borderRadius: '16px', boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02)', padding: '24px', border: '1px solid #e2e8f0' }}>
+          
+          {/* Capture Zone */}
+          <div 
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              border: '2px dashed #cbd5e1',
+              borderRadius: '12px',
+              padding: previewUrl ? '16px' : '40px 20px',
+              textAlign: 'center',
+              cursor: 'pointer',
+              background: previewUrl ? '#0f172a' : '#f8fafc',
+              transition: 'all 0.2s ease',
+              marginBottom: '20px'
+            }}
+          >
+            {previewUrl ? (
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <img src={previewUrl} alt="Retina preview" style={{ maxHeight: '280px', borderRadius: '8px', display: 'block', margin: '0 auto' }} />
+                <div style={{ marginTop: '12px', color: '#94a3b8', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <RefreshCw size={14} /> Tap image to select a different scan
+                </div>
+              </div>
+            ) : (
+              <div style={{ color: '#475569' }}>
+                <div style={{ width: '56px', height: '56px', background: '#eff6ff', color: '#2563eb', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
+                  <Camera size={28} />
+                </div>
+                <div style={{ fontWeight: '600', fontSize: '16px', color: '#1e293b', marginBottom: '4px' }}>
+                  Capture or Upload Retinal Scan
+                </div>
+                <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Supports JPEG, PNG fundus photography
+                </div>
+              </div>
+            )}
+          </div>
+
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            accept="image/*" 
+            capture="environment" 
+            style={{ display: 'none' }} 
+          />
+
+          {/* Action Button */}
+          <button 
+            onClick={handleAnalyze} 
+            disabled={!selectedImage || loading}
+            style={{
+              width: '100%',
+              padding: '14px',
+              background: selectedImage && !loading ? '#2563eb' : '#cbd5e1',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: selectedImage && !loading ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'background 0.2s ease'
+            }}
+          >
+            {loading ? (
+              <>
+                <Activity size={20} className="animate-spin" />
+                <span>Evaluating Image with ResNet-50...</span>
+              </>
+            ) : (
+              <span>Run Automated Diagnostic Analysis</span>
+            )}
+          </button>
+
+          {/* Error Message */}
+          {error && (
+            <div style={{ marginTop: '20px', padding: '14px 16px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: '10px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <AlertCircle size={20} style={{ flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Result Card */}
+          {result && (
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f1f5f9', paddingTop: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <CheckCircle size={24} color="#16a34a" />
+                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>
+                    {result.stage_name}
+                  </h3>
+                </div>
+                {(() => {
+                  const badge = getRiskBadgeColor(result.risk_level);
+                  return (
+                    <span style={{ padding: '4px 12px', borderRadius: '12px', background: badge.bg, color: badge.text, border: `1px solid ${badge.border}`, fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' }}>
+                      {result.risk_level} Risk
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Confidence Metric Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>Confidence Rating</div>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a', marginTop: '2px' }}>{result.confidence}%</div>
+                </div>
+                <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>Severity Index</div>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a', marginTop: '2px' }}>Stage {result.class_code} / 4</div>
+                </div>
+              </div>
+
+              {/* Clinical Recommendation Box */}
+              <div style={{ padding: '14px 16px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #dbeafe', color: '#1e40af', fontSize: '14px' }}>
+                <div style={{ fontWeight: '700', marginBottom: '2px' }}>Clinical Action Plan:</div>
+                <div style={{ color: '#1e3a8a' }}>{result.recommendation}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
